@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JobShield — Offer Fraud Checker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root{
+    --bg: #F5F9F8;
+    --panel: #FFFFFF;
+    --ink: #16302B;
+    --ink-soft: #4D6A63;
+    --brand: #147D6F;
+    --brand-deep: #0D5F54;
+    --safe: #2F9E6E;
+    --caution: #D99A1B;
+    --risk: #D6564A;
+    --border: #DCEAE6;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+  }
+  h1,h2,h3, .display{
+    font-family: 'Quicksand', sans-serif;
+  }
+  .mono{ font-family: 'IBM Plex Mono', monospace; }
+
+  .shell{ max-width: 880px; margin: 0 auto; padding: 28px 20px 80px; }
+  header.top{ display:flex; align-items:center; gap:12px; margin-bottom: 22px; }
+  .badge-icon{
+    width:42px; height:42px; border-radius:12px;
+    background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+    display:flex; align-items:center; justify-content:center;
+    color:white; font-size:20px; font-weight:700;
+  }
+  header.top h1{ font-size: 22px; margin:0; color: var(--brand-deep); }
+  header.top p{ margin:0; font-size:12.5px; color: var(--ink-soft); }
+
+  nav.tabs{
+    display:flex; gap:6px; background: var(--panel); padding:6px;
+    border-radius: 14px; border:1px solid var(--border); margin-bottom:22px;
+    overflow-x:auto;
+  }
+  nav.tabs button{
+    flex: 1 0 auto; white-space:nowrap;
+    border:none; background:transparent; padding:10px 14px;
+    border-radius:10px; font-family:'Quicksand'; font-weight:600; font-size:13.5px;
+    color: var(--ink-soft); cursor:pointer; transition: all .15s ease;
+  }
+  nav.tabs button.active{ background: var(--brand); color:white; }
+
+  .card{
+    background: var(--panel); border:1px solid var(--border); border-radius:18px;
+    padding:22px; margin-bottom:18px;
+  }
+  .mode-toggle{ display:flex; gap:8px; margin-bottom:16px; }
+  .mode-toggle button{
+    flex:1; padding:10px; border-radius:10px; border:1.5px solid var(--border);
+    background:#F4FAF9; font-family:'Quicksand'; font-weight:600; cursor:pointer; color:var(--ink-soft);
+  }
+  .mode-toggle button.active{ border-color: var(--brand); background: #E4F5F1; color: var(--brand-deep); }
+
+  textarea, input[type=text]{
+    width:100%; border:1.5px solid var(--border); border-radius:12px; padding:12px 14px;
+    font-family:'Inter'; font-size:14px; resize:vertical; background:#FBFDFC;
+  }
+  textarea:focus, input:focus{ outline:none; border-color: var(--brand); }
+
+  .primary-btn{
+    margin-top:12px; background: var(--brand); color:white; border:none;
+    padding:12px 20px; border-radius:12px; font-family:'Quicksand'; font-weight:700;
+    font-size:14px; cursor:pointer;
+  }
+  .primary-btn:disabled{ opacity:0.6; cursor:default; }
+  .ghost-btn{
+    background:transparent; border:1.5px solid var(--border); color:var(--ink-soft);
+    padding:9px 14px; border-radius:10px; font-family:'Quicksand'; font-weight:600;
+    font-size:13px; cursor:pointer;
+  }
+
+  .gauge-wrap{ display:flex; flex-direction:column; align-items:center; margin: 6px 0 16px; }
+  .gauge-score{ font-family:'Quicksand'; font-weight:700; font-size:34px; margin-top:6px; }
+  .gauge-level{ font-family:'Quicksand'; font-weight:700; font-size:14px; padding:4px 14px; border-radius:999px; margin-top:4px; }
+
+  .flag-item{ border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:8px; background:#FBFDFC; cursor:pointer; }
+  .flag-item .flag-label{ font-weight:600; font-size:13.5px; display:flex; justify-content:space-between; align-items:center; }
+  .flag-why{ font-size:12.5px; color: var(--ink-soft); margin-top:6px; line-height:1.5; }
+
+  .pill{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600; }
+  .pill.Low{ background:#E1F5EA; color: var(--safe); }
+  .pill.Medium{ background:#FCF0D8; color: var(--caution); }
+  .pill.High{ background:#FBE3E1; color: var(--risk); }
+
+  .stat-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-bottom:18px; }
+  .stat-box{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center; }
+  .stat-box .num{ font-family:'Quicksand'; font-weight:700; font-size:22px; }
+  .stat-box .label{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+
+  .tips-carousel{ background: linear-gradient(120deg, #0D5F54, #147D6F); color:white; border-radius:16px; padding:18px 20px; margin-bottom:18px; }
+  .tips-carousel .tip-text{ font-size:14px; line-height:1.5; min-height:42px; }
+  .tips-carousel .tip-dots{ display:flex; gap:6px; margin-top:10px; }
+  .tips-carousel .dot{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.4); }
+  .tips-carousel .dot.active{ background:white; }
+
+  .history-row{ display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:10px 0; font-size:13.5px; }
+  .history-row:last-child{ border-bottom:none; }
+  .snippet{ color: var(--ink-soft); font-size:12px; max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .compare-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .compare-grid{ grid-template-columns:1fr; } .stat-grid{ grid-template-columns: repeat(2,1fr);} }
+
+  .empty-state{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px; }
+  .footer-note{ text-align:center; font-size:11.5px; color:var(--ink-soft); margin-top:26px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const API = "http://localhost:5000/api";
+
+const TIPS = [
+  "Legit companies never ask you to pay to get hired.",
+  "A real recruiter will always do a live video or phone call, not chat-only.",
+  "Search the company name + \"scam\" or \"reviews\" before replying.",
+  "Genuine offer letters have a company letterhead, signature, and ID.",
+  "If it feels rushed, slow down — urgency is a scam tactic, not a benefit.",
+];
+
+function levelColor(level){
+  return level === "High" ? "var(--risk)" : level === "Medium" ? "var(--caution)" : "var(--safe)";
+}
+
+function Gauge({ score, level }){
+  const angle = (score/100) * 180 - 90;
+  return (
+    <div className="gauge-wrap">
+      <svg width="180" height="100" viewBox="0 0 180 100">
+        <path d="M10 90 A80 80 0 0 1 170 90" fill="none" stroke="#E7F1EE" strokeWidth="14" strokeLinecap="round"/>
+        <path d="M10 90 A80 80 0 0 1 170 90" fill="none" stroke={levelColor(level)} strokeWidth="14" strokeLinecap="round"
+          strokeDasharray={`${(score/100)*251} 251`} />
+        <g transform={`rotate(${angle} 90 90)`}>
+          <line x1="90" y1="90" x2="90" y2="25" stroke="#16302B" strokeWidth="3" strokeLinecap="round"/>
+        </g>
+        <circle cx="90" cy="90" r="5" fill="#16302B" />
+      </svg>
+      <div className="gauge-score">{score}<span style={{fontSize:14, color:"var(--ink-soft)"}}>/100</span></div>
+      <div className="gauge-level" style={{background: levelColor(level)+"22", color: levelColor(level)}}>{level} Risk</div>
+    </div>
+  );
+}
+
+function FlagList({ flags }){
+  const [open, setOpen] = useState(null);
+  if(!flags || flags.length===0){
+    return <div className="empty-state">No warning signs detected in the text provided. Still verify independently before accepting.</div>;
+  }
+  return flags.map((f,i)=>(
+    <div className="flag-item" key={i} onClick={()=>setOpen(open===i?null:i)}>
+      <div className="flag-label"><span>🚩 {f.label}</span><span style={{fontSize:11, color:"var(--ink-soft)"}}>{open===i?"hide":"why?"}</span></div>
+      {open===i && <div className="flag-why">{f.why}</div>}
+    </div>
+  ));
+}
+
+function ResultCard({ result, onSave }){
+  if(!result) return null;
+  const shareText = `JobShield Result Card\nRisk Score: ${result.score}/100 (${result.level})\nFlags: ${result.flags.map(f=>f.label).join("; ") || "None detected"}\nRemember: always verify independently.`;
+  const download = () => {
+    const blob = new Blob([shareText], {type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "jobshield-result.txt"; a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="card">
+      <Gauge score={result.score} level={result.level} />
+      {result.verified_match && <div style={{textAlign:"center", fontSize:12.5, color:"var(--safe)", marginBottom:10}}>Matches verified domain for <strong>{result.verified_match}</strong> ✅</div>}
+      <h3 style={{fontSize:14, marginBottom:10}}>Why this score:</h3>
+      <FlagList flags={result.flags} />
+      <div style={{display:"flex", gap:8, marginTop:14}}>
+        <button className="ghost-btn" onClick={download}>⬇ Save Result Card</button>
+      </div>
+    </div>
+  );
+}
+
+function CheckTab(){
+  const [mode, setMode] = useState("job"); // job | link | course
+  const [text, setText] = useState("");
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const run = async () => {
+    setError(""); setResult(null); setLoading(true);
+    try{
+      let res, data;
+      if(mode === "link"){
+        res = await fetch(`${API}/check-link`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({url})});
+      } else {
+        res = await fetch(`${API}/check-text`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({text, mode})});
+      }
+      data = await res.json();
+      if(!res.ok){ setError(data.error || "Something went wrong."); }
+      else setResult(data);
+    }catch(e){
+      setError("Couldn't reach the JobShield backend. Is it running on localhost:5000?");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <div className="card">
+        <div className="mode-toggle">
+          <button className={mode==="job"?"active":""} onClick={()=>{setMode("job"); setResult(null);}}>💼 Job/Internship Offer</button>
+          <button className={mode==="link"?"active":""} onClick={()=>{setMode("link"); setResult(null);}}>🔗 Link</button>
+          <button className={mode==="course"?"active":""} onClick={()=>{setMode("course"); setResult(null);}}>🎓 Paid Course</button>
+        </div>
+        {mode==="link" ? (
+          <input type="text" placeholder="Paste the offer/company link here…" value={url} onChange={e=>setUrl(e.target.value)} />
+        ) : (
+          <textarea rows={6} placeholder={mode==="course" ? "Paste the course/certification offer details here…" : "Paste the job or internship offer message here…"} value={text} onChange={e=>setText(e.target.value)} />
+        )}
+        <button className="primary-btn" disabled={loading} onClick={run}>{loading ? "Checking…" : "Check Now"}</button>
+        {error && <div style={{color:"var(--risk)", fontSize:13, marginTop:10}}>{error}</div>}
+      </div>
+      <ResultCard result={result} />
+    </div>
+  );
+}
+
+function Dashboard(){
+  const [stats, setStats] = useState(null);
+  const [tipIndex, setTipIndex] = useState(0);
+
+  useEffect(()=>{
+    fetch(`${API}/dashboard`).then(r=>r.json()).then(setStats).catch(()=>setStats(null));
+    const t = setInterval(()=> setTipIndex(i => (i+1)%TIPS.length), 4000);
+    return ()=>clearInterval(t);
+  },[]);
+
+  return (
+    <div>
+      <div className="tips-carousel">
+        <div className="tip-text">💡 {TIPS[tipIndex]}</div>
+        <div className="tip-dots">{TIPS.map((_,i)=><div key={i} className={"dot"+(i===tipIndex?" active":"")}/>)}</div>
+      </div>
+      {stats ? (
+        <div className="stat-grid">
+          <div className="stat-box"><div className="num">{stats.total}</div><div className="label">Total Checks</div></div>
+          <div className="stat-box"><div className="num" style={{color:"var(--risk)"}}>{stats.high}</div><div className="label">High Risk</div></div>
+          <div className="stat-box"><div className="num" style={{color:"var(--caution)"}}>{stats.medium}</div><div className="label">Medium Risk</div></div>
+          <div className="stat-box"><div className="num" style={{color:"var(--safe)"}}>{stats.low}</div><div className="label">Low Risk</div></div>
+        </div>
+      ) : <div className="empty-state">No data yet — connect the backend to see your dashboard.</div>}
+      <div className="card">
+        <h3 style={{fontSize:14, marginTop:0}}>Quick Start</h3>
+        <div className="empty-state" style={{padding:"10px 0"}}>Head to the Check tab to run your first offer, link, or course check.</div>
+      </div>
+    </div>
+  );
+}
+
+function History(){
+  const [items, setItems] = useState(null);
+  useEffect(()=>{ fetch(`${API}/history`).then(r=>r.json()).then(setItems).catch(()=>setItems([])); },[]);
+  if(items===null) return <div className="empty-state">Loading…</div>;
+  return (
+    <div className="card">
+      {items.length===0 && <div className="empty-state">No checks yet. Run one from the Check tab.</div>}
+      {items.map(item=>(
+        <div className="history-row" key={item.id}>
+          <div>
+            <div style={{fontWeight:600}}>{item.source==="link"?"🔗":item.source==="course"?"🎓":"💼"} <span className={"pill "+item.level} style={{marginLeft:6}}>{item.level}</span></div>
+            <div className="snippet">{item.input_snippet}</div>
+          </div>
+          <div className="mono" style={{fontWeight:700}}>{item.score}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Compare(){
+  const [leftVal, setLeftVal] = useState("");
+  const [rightVal, setRightVal] = useState("");
+  const [res, setRes] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const run = async () => {
+    setLoading(true);
+    try{
+      const r = await fetch(`${API}/compare`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({
+        left:{type:"text", value:leftVal, mode:"job"}, right:{type:"text", value:rightVal, mode:"job"}
+      })});
+      setRes(await r.json());
+    }catch(e){ setRes(null); }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <div className="card">
+        <div className="compare-grid">
+          <textarea rows={5} placeholder="Paste first offer…" value={leftVal} onChange={e=>setLeftVal(e.target.value)} />
+          <textarea rows={5} placeholder="Paste second offer…" value={rightVal} onChange={e=>setRightVal(e.target.value)} />
+        </div>
+        <button className="primary-btn" disabled={loading} onClick={run}>{loading?"Comparing…":"Compare"}</button>
+      </div>
+      {res && (
+        <div className="compare-grid">
+          <ResultCard result={res.left} />
+          <ResultCard result={res.right} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App(){
+  const [tab, setTab] = useState("check");
+  return (
+    <div className="shell">
+      <header className="top">
+        <div className="badge-icon">JS</div>
+        <div>
+          <h1>JobShield</h1>
+          <p>Check job, internship, and course offers before you trust them.</p>
+        </div>
+      </header>
+      <nav className="tabs">
+        <button className={tab==="check"?"active":""} onClick={()=>setTab("check")}>Check</button>
+        <button className={tab==="dashboard"?"active":""} onClick={()=>setTab("dashboard")}>Dashboard</button>
+        <button className={tab==="history"?"active":""} onClick={()=>setTab("history")}>History</button>
+        <button className={tab==="compare"?"active":""} onClick={()=>setTab("compare")}>Compare</button>
+      </nav>
+      {tab==="check" && <CheckTab/>}
+      {tab==="dashboard" && <Dashboard/>}
+      {tab==="history" && <History/>}
+      {tab==="compare" && <Compare/>}
+      <div className="footer-note">JobShield gives guidance, not certainty. Always verify independently before accepting any offer or payment.</div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
