@@ -59,3 +59,4 @@ python app.py
 ###  Frontend
 
 open frontend/index.html in a web browser.
+🔗 **Live Demo:** https://sowww2404-lgtm.github.io/job-shield/
