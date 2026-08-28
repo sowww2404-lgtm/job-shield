@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JobShield — Offer Fraud Checker</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 42 42'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23B8804A'/%3E%3Cstop offset='100%25' stop-color='%234A2C13'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M21 2 L38 8 V20 C38 30 31 37 21 40 C11 37 4 30 4 20 V8 Z' fill='url(%23g)'/%3E%3Cpath d='M14 21 L19 26 L29 15' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  if (window['pdfjsLib']) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+  }
+</script>
+<style>
+  :root{
+    --bg: #FBF2E4;
+    --panel: #FFFFFF;
+    --ink: #2B1A10;
+    --ink-soft: #86644A;
+    --brand: #A9702E;
+    --brand-deep: #5C3717;
+    --grad-a: #B8804A;
+    --grad-b: #4A2C13;
+    --safe: #2F9E6E;
+    --caution: #C97C0E;
+    --risk: #C0392B;
+    --border: #EEDDC2;
+  }
+  [data-theme="dark"]{
+    --bg: #170F09;
+    --panel: #26180E;
+    --ink: #F7E9D6;
+    --ink-soft: #C9A47E;
+    --brand: #C68B52;
+    --brand-deep: #6B4020;
+    --grad-a: #C68B52;
+    --grad-b: #3D2410;
+    --safe: #3FC489;
+    --caution: #E8B84B;
+    --risk: #E8776A;
+    --border: #3C2814;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    transition: background .25s ease, color .25s ease;
+  }
+  h1,h2,h3, .display{
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  .mono{ font-family: 'IBM Plex Mono', monospace; }
+
+  @keyframes fadeSlideUp{ from{ opacity:0; transform:translateY(10px);} to{ opacity:1; transform:translateY(0);} }
+  @keyframes popScore{ 0%{ transform:scale(1);} 40%{ transform:scale(1.18);} 100%{ transform:scale(1);} }
+  @keyframes shakeX{ 0%,100%{ transform:translateX(0);} 20%{ transform:translateX(-4px);} 40%{ transform:translateX(4px);} 60%{ transform:translateX(-3px);} 80%{ transform:translateX(3px);} }
+  .fade-in{ animation: fadeSlideUp .35s ease both; }
+  .pop{ animation: popScore .45s ease; }
+  .shake{ animation: shakeX .4s ease; }
+
+  .shell{ max-width: 880px; margin: 0 auto; padding: 28px 20px 80px; }
+  header.top{
+    display:flex; align-items:center; gap:14px; margin-bottom: 24px;
+    background: linear-gradient(120deg, var(--grad-a), var(--grad-b));
+    border-radius: 22px; padding: 20px 22px; box-shadow: 0 14px 34px -12px rgba(122,63,23,0.45);
+    position: relative; overflow: hidden;
+  }
+  header.top::after{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: radial-gradient(circle at 85% -20%, rgba(255,255,255,0.35), transparent 55%);
+  }
+  header.top h1{ font-size: 22px; margin:0; color: #FFF7EA; letter-spacing:.2px; }
+  header.top p{ margin:0; font-size:12.5px; color: rgba(255,247,234,0.85); }
+  .theme-toggle{
+    margin-left:auto; background:rgba(255,255,255,0.18); border:1.5px solid rgba(255,255,255,0.4); color:#FFF7EA;
+    width:38px; height:38px; border-radius:50%; cursor:pointer; font-size:16px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; position:relative; z-index:1;
+    backdrop-filter: blur(4px);
+  }
+  .badge-icon{
+    width:42px; height:42px; border-radius:12px;
+    background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
+    display:flex; align-items:center; justify-content:center;
+    color:white; font-size:20px; font-weight:700;
+  }
+  nav.tabs{
+    display:flex; gap:6px; background: var(--panel); padding:7px;
+    border-radius: 16px; border:1px solid var(--border); margin-bottom:22px;
+    overflow-x:auto; box-shadow: 0 4px 14px -8px rgba(122,63,23,0.25);
+  }
+  nav.tabs button{
+    flex: 1 0 auto; white-space:nowrap;
+    border:none; background:transparent; padding:10px 14px;
+    border-radius:11px; font-family:'Space Grotesk'; font-weight:600; font-size:13.5px;
+    color: var(--ink-soft); cursor:pointer; transition: all .18s ease;
+  }
+  nav.tabs button.active{
+    background: linear-gradient(120deg, var(--grad-a), var(--grad-b)); color:#FFF7EA;
+    box-shadow: 0 6px 16px -6px rgba(122,63,23,0.55);
+  }
+
+  .card{
+    background: var(--panel); border:1px solid var(--border); border-radius:20px;
+    padding:22px; margin-bottom:18px; box-shadow: 0 8px 24px -16px rgba(122,63,23,0.3);
+  }
+  .mode-toggle{ display:flex; gap:8px; margin-bottom:16px; }
+  .mode-toggle button{
+    flex:1; padding:10px; border-radius:12px; border:1.5px solid var(--border);
+    background:#FBF2E4; font-family:'Space Grotesk'; font-weight:600; cursor:pointer; color:var(--ink-soft);
+    transition: all .15s ease;
+  }
+  .mode-toggle button.active{
+    border-color: transparent; background: linear-gradient(120deg, var(--grad-a), var(--grad-b)); color:#FFF7EA;
+  }
+  [data-theme="dark"] .mode-toggle button{ background:#20140B; }
+
+  textarea, input[type=text]{
+    width:100%; border:1.5px solid var(--border); border-radius:12px; padding:12px 14px;
+    font-family:'Inter'; font-size:14px; resize:vertical; background:#FFFBF3; color:var(--ink);
+  }
+  [data-theme="dark"] textarea, [data-theme="dark"] input[type=text]{ background:#1C120A; }
+  textarea:focus, input:focus{ outline:none; border-color: var(--brand); }
+
+  .primary-btn{
+    margin-top:12px; background: linear-gradient(120deg, var(--grad-a), var(--grad-b)); color:#FFF7EA; border:none;
+    padding:12px 22px; border-radius:12px; font-family:'Space Grotesk'; font-weight:700;
+    font-size:14px; cursor:pointer; box-shadow: 0 8px 20px -8px rgba(122,63,23,0.55);
+  }
+  .primary-btn:disabled{ opacity:0.6; cursor:default; box-shadow:none; }
+  .ghost-btn{
+    background:transparent; border:1.5px solid var(--border); color:var(--ink-soft);
+    padding:9px 14px; border-radius:10px; font-family:'Space Grotesk'; font-weight:600;
+    font-size:13px; cursor:pointer;
+  }
+
+  .gauge-wrap{ display:flex; flex-direction:column; align-items:center; margin: 6px 0 16px; }
+  .gauge-score{ font-family:'Space Grotesk'; font-weight:700; font-size:34px; margin-top:6px; }
+  .gauge-level{ font-family:'Space Grotesk'; font-weight:700; font-size:14px; padding:4px 14px; border-radius:999px; margin-top:4px; }
+  .gauge-arc{ transition: stroke-dasharray 0.9s cubic-bezier(.2,.9,.3,1); }
+  .gauge-needle{ transition: transform 0.9s cubic-bezier(.2,.9,.3,1); }
+
+  .sample-row{ display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .sample-chip{
+    background:#FBF2E4; border:1px solid var(--border); color:var(--brand-deep); font-size:12px;
+    padding:6px 12px; border-radius:999px; cursor:pointer; font-family:'Space Grotesk'; font-weight:600;
+  }
+  [data-theme="dark"] .sample-chip{ background:#2A1B0F; }
+  .sample-chip:hover{ border-color:var(--brand); }
+
+  .flag-item{ border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-bottom:8px; background:#FBFDFC; cursor:pointer; }
+  .flag-item .flag-label{ font-weight:600; font-size:13.5px; display:flex; justify-content:space-between; align-items:center; }
+  .flag-why{ font-size:12.5px; color: var(--ink-soft); margin-top:6px; line-height:1.5; }
+
+  .pill{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:600; }
+  .pill.Low{ background:#E1F5EA; color: var(--safe); }
+  .pill.Medium{ background:#FCF0D8; color: var(--caution); }
+  .pill.High{ background:#FBE3E1; color: var(--risk); }
+
+  .stat-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-bottom:18px; }
+  .stat-box{ background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:14px; text-align:center; }
+  .stat-box .num{ font-family:'Space Grotesk'; font-weight:700; font-size:22px; }
+  .stat-box .label{ font-size:11px; color:var(--ink-soft); margin-top:2px; }
+
+  .tips-carousel{ background: linear-gradient(120deg, var(--grad-a), var(--grad-b)); color:white; border-radius:16px; padding:18px 20px; margin-bottom:18px; }
+  .tips-carousel .tip-text{ font-size:14px; line-height:1.5; min-height:42px; }
+  .tips-carousel .tip-dots{ display:flex; gap:6px; margin-top:10px; }
+  .tips-carousel .dot{ width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,0.4); }
+  .tips-carousel .dot.active{ background:white; }
+
+  .history-row{ display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding:10px 0; font-size:13.5px; }
+  .history-row:last-child{ border-bottom:none; }
+  .snippet{ color: var(--ink-soft); font-size:12px; max-width:340px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .compare-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .compare-grid{ grid-template-columns:1fr; } .stat-grid{ grid-template-columns: repeat(2,1fr);} }
+
+  .empty-state{ text-align:center; padding:30px 10px; color:var(--ink-soft); font-size:13.5px; }
+  .footer-note{ text-align:center; font-size:11.5px; color:var(--ink-soft); margin-top:26px; }
+
+  /* --- file upload --- */
+  .upload-row{ display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
+  .upload-btn{
+    display:inline-flex; align-items:center; gap:6px; background:#FBF2E4; border:1.5px dashed var(--brand);
+    color:var(--brand-deep); padding:8px 14px; border-radius:10px; font-family:'Space Grotesk'; font-weight:600;
+    font-size:12.5px; cursor:pointer;
+  }
+  .upload-filename{ font-size:12px; color:var(--ink-soft); }
+  .upload-status{ font-size:12px; color:var(--brand-deep); }
+
+  /* --- logo --- */
+  .badge-logo{ width:42px; height:42px; flex-shrink:0; }
+
+  /* --- chatbot --- */
+  .chat-fab{
+    position:fixed; right:20px; bottom:22px; width:56px; height:56px; border-radius:50%;
+    background: linear-gradient(135deg, var(--brand), var(--brand-deep)); color:white; border:none;
+    box-shadow: 0 6px 18px rgba(13,95,84,0.35); cursor:pointer; font-size:24px;
+    display:flex; align-items:center; justify-content:center; z-index:40;
+  }
+  .chat-panel{
+    position:fixed; right:20px; bottom:88px; width:320px; max-width:calc(100vw - 40px); height:420px;
+    background:var(--panel); border:1px solid var(--border); border-radius:16px; box-shadow:0 12px 30px rgba(0,0,0,0.18);
+    display:flex; flex-direction:column; overflow:hidden; z-index:41;
+  }
+  .chat-head{ background: linear-gradient(120deg,var(--grad-a),var(--grad-b)); color:white; padding:12px 14px; font-family:'Space Grotesk'; font-weight:700; font-size:14px; display:flex; justify-content:space-between; align-items:center; }
+  .chat-close{ background:transparent; border:none; color:white; font-size:16px; cursor:pointer; }
+  .chat-body{ flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
+  .chat-bubble{ max-width:82%; padding:9px 12px; border-radius:12px; font-size:13px; line-height:1.4; }
+  .chat-bubble.bot{ background:#F1F7F5; color:var(--ink); align-self:flex-start; border-bottom-left-radius:4px; }
+  .chat-bubble.user{ background:var(--brand); color:white; align-self:flex-end; border-bottom-right-radius:4px; }
+  .chat-suggestions{ display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 10px; }
+  .chat-chip{ background:#FBF2E4; border:1px solid var(--border); color:var(--brand-deep); font-size:11.5px; padding:5px 10px; border-radius:999px; cursor:pointer; }
+  .chat-input-row{ display:flex; gap:8px; padding:10px; border-top:1px solid var(--border); }
+  .chat-input-row input{ flex:1; }
+  .chat-send{ background:var(--brand); color:white; border:none; border-radius:10px; padding:0 14px; font-family:'Space Grotesk'; font-weight:700; cursor:pointer; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const API = "https://job-shield-uchm.onrender.com/api";
+
+const TIPS = [
+  "Legit companies never ask you to pay to get hired.",
+  "A real recruiter will always do a live video or phone call, not chat-only.",
+  "Search the company name + \"scam\" or \"reviews\" before replying.",
+  "Genuine offer letters have a company letterhead, signature, and ID.",
+  "If it feels rushed, slow down — urgency is a scam tactic, not a benefit.",
+];
+
+const SAMPLE_OFFERS = {
+  job: [
+    {
+      label: "🚩 Suspicious offer",
+      text: "Congratulations! You have been selected for the Data Entry Work From Home position. To confirm your seat, please pay a refundable registration fee of ₹1,500 within 24 hours via the UPI link below. Kit and laptop will be couriered after payment. Limited seats, act fast!"
+    },
+    {
+      label: "✅ Reasonable offer",
+      text: "Hi, following your interview on Tuesday with our engineering team, we're happy to offer you the Software Intern role starting next month. Please find the offer letter attached with your reporting manager's name, stipend details, and start date. Let us know if you have any questions — no fees are required at any stage of onboarding."
+    }
+  ],
+  course: [
+    {
+      label: "🚩 Suspicious course",
+      text: "Get a 100% Placement Guarantee after this 3-day Data Science Bootcamp! Pay only ₹4,999 (discounted from ₹49,999, today only) and get a certificate + guaranteed job interview with top MNCs. Limited slots — enroll now before the offer expires in 2 hours."
+    }
+  ]
+};
+
+function SampleOfferChips({ mode, onLoad }){
+  const list = SAMPLE_OFFERS[mode];
+  if(!list || list.length===0) return null;
+  return (
+    <div className="sample-row">
+      <span style={{fontSize:11.5, color:"var(--ink-soft)", alignSelf:"center"}}>Try a sample:</span>
+      {list.map((s,i)=>(
+        <span key={i} className="sample-chip" onClick={()=>onLoad(s.text)}>{s.label}</span>
+      ))}
+    </div>
+  );
+}
+
+async function extractTextFromFile(file){
+  const name = file.name.toLowerCase();
+  if(name.endsWith(".txt") || name.endsWith(".md")){
+    return await file.text();
+  }
+  if(name.endsWith(".docx")){
+    if(!window.mammoth) throw new Error("Word-file reader didn't load — try pasting the text instead.");
+    const arrayBuffer = await file.arrayBuffer();
+    const out = await window.mammoth.extractRawText({ arrayBuffer });
+    return out.value;
+  }
+  if(name.endsWith(".pdf")){
+    if(!window.pdfjsLib) throw new Error("PDF reader didn't load — try pasting the text instead.");
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    let text = "";
+    for(let i=1; i<=pdf.numPages; i++){
+      const page = await pdf.getPage(i);
+      const content = await page.getTextContent();
+      text += content.items.map(it=>it.str).join(" ") + "\n";
+    }
+    return text;
+  }
+  throw new Error("Unsupported file type. Please upload a .txt, .docx, or .pdf file.");
+}
+
+function UploadOfferButton({ onExtracted, label }){
+  const inputRef = React.useRef(null);
+  const [status, setStatus] = useState("");
+  const [fileName, setFileName] = useState("");
+
+  const handleFile = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    setFileName(file.name);
+    setStatus("Reading file…");
+    try{
+      const text = await extractTextFromFile(file);
+      onExtracted(text.trim());
+      setStatus("Loaded ✓ — you can edit the text below before checking.");
+    }catch(err){
+      setStatus(err.message || "Couldn't read that file.");
+    }
+    e.target.value = "";
+  };
+
+  return (
+    <div className="upload-row">
+      <label className="upload-btn">
+        📎 {label || "Upload offer letter"}
+        <input ref={inputRef} type="file" accept=".txt,.md,.docx,.pdf" onChange={handleFile} style={{display:"none"}} />
+      </label>
+      {fileName && <span className="upload-filename">{fileName}</span>}
+      {status && <span className="upload-status">{status}</span>}
+    </div>
+  );
+}
+
+function levelColor(level){
+  return level === "High" ? "var(--risk)" : level === "Medium" ? "var(--caution)" : "var(--safe)";
+}
+
+function Gauge({ score, level }){
+  const [animScore, setAnimScore] = useState(0);
+  useEffect(()=>{
+    const t = setTimeout(()=> setAnimScore(score), 50);
+    return ()=>clearTimeout(t);
+  }, [score]);
+  const angle = (animScore/100) * 180 - 90;
+  return (
+    <div className="gauge-wrap">
+      <svg width="180" height="100" viewBox="0 0 180 100">
+        <path d="M10 90 A80 80 0 0 1 170 90" fill="none" stroke="#E7F1EE" strokeWidth="14" strokeLinecap="round"/>
+        <path className="gauge-arc" d="M10 90 A80 80 0 0 1 170 90" fill="none" stroke={levelColor(level)} strokeWidth="14" strokeLinecap="round"
+          strokeDasharray={`${(animScore/100)*251} 251`} />
+        <g className="gauge-needle" transform={`rotate(${angle} 90 90)`}>
+          <line x1="90" y1="90" x2="90" y2="25" stroke="#2B1A10" strokeWidth="3" strokeLinecap="round"/>
+        </g>
+        <circle cx="90" cy="90" r="5" fill="#2B1A10" />
+      </svg>
+      <div className="gauge-score pop" key={score}>{score}<span style={{fontSize:14, color:"var(--ink-soft)"}}>/100</span></div>
+      <div className="gauge-level" style={{background: levelColor(level)+"22", color: levelColor(level)}}>{level} Risk</div>
+    </div>
+  );
+}
+
+function FlagList({ flags }){
+  const [open, setOpen] = useState(null);
+  if(!flags || flags.length===0){
+    return <div className="empty-state">No warning signs detected in the text provided. Still verify independently before accepting.</div>;
+  }
+  return flags.map((f,i)=>{
+    const isSafe = f.weight < 0;
+    return (
+      <div className="flag-item" key={i} onClick={()=>setOpen(open===i?null:i)} style={isSafe ? {borderColor:"var(--safe)", background:"#F1FAF5"} : {}}>
+        <div className="flag-label"><span>{isSafe ? "✅" : "🚩"} {f.label.replace(" ✅","")}</span><span style={{fontSize:11, color:"var(--ink-soft)"}}>{open===i?"hide":"why?"}</span></div>
+        {open===i && <div className="flag-why">{f.why}</div>}
+      </div>
+    );
+  });
+}
+
+function ResultCard({ result, onSave }){
+  if(!result) return null;
+  const shareText = `JobShield Result Card\nRisk Score: ${result.score}/100 (${result.level})\nFlags: ${result.flags.map(f=>f.label).join("; ") || "None detected"}\nRemember: always verify independently.`;
+  const download = () => {
+    const blob = new Blob([shareText], {type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "jobshield-result.txt"; a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className={"card fade-in" + (result.level==="High" ? " shake" : "")}>
+      <Gauge score={result.score} level={result.level} />
+      {result.verified_match && <div style={{textAlign:"center", fontSize:12.5, color:"var(--safe)", marginBottom:10}}>Matches verified domain for <strong>{result.verified_match}</strong> ✅</div>}
+      <h3 style={{fontSize:14, marginBottom:10}}>Why this score:</h3>
+      <FlagList flags={result.flags} />
+      <div style={{display:"flex", gap:8, marginTop:14}}>
+        <button className="ghost-btn" onClick={download}>⬇ Save Result Card</button>
+      </div>
+    </div>
+  );
+}
+
+function CheckTab(){
+  const [mode, setMode] = useState("job"); // job | link | course
+  const [text, setText] = useState("");
+  const [url, setUrl] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const run = async () => {
+    setError(""); setResult(null); setLoading(true);
+    try{
+      let res, data;
+      if(mode === "link"){
+        res = await fetch(`${API}/check-link`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({url})});
+      } else {
+        res = await fetch(`${API}/check-text`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({text, mode})});
+      }
+      data = await res.json();
+      if(!res.ok){ setError(data.error || "Something went wrong."); }
+      else setResult(data);
+    }catch(e){
+      setError("Couldn't reach the JobShield backend. Is it running on localhost:5000?");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <div className="card">
+        <div className="mode-toggle">
+          <button className={mode==="job"?"active":""} onClick={()=>{setMode("job"); setResult(null);}}>💼 Job/Internship Offer</button>
+          <button className={mode==="link"?"active":""} onClick={()=>{setMode("link"); setResult(null);}}>🔗 Link</button>
+          <button className={mode==="course"?"active":""} onClick={()=>{setMode("course"); setResult(null);}}>🎓 Paid Course</button>
+        </div>
+        {mode==="link" ? (
+          <input type="text" placeholder="Paste the offer/company link here…" value={url} onChange={e=>setUrl(e.target.value)} />
+        ) : (
+          <>
+            <textarea rows={6} placeholder={mode==="course" ? "Paste the course/certification offer details here…" : "Paste the job or internship offer message here…"} value={text} onChange={e=>setText(e.target.value)} />
+            <UploadOfferButton onExtracted={setText} label="Upload offer letter (.txt, .docx, .pdf)" />
+            <SampleOfferChips mode={mode} onLoad={setText} />
+          </>
+        )}
+        <button className="primary-btn" disabled={loading} onClick={run}>{loading ? "Checking…" : "Check Now"}</button>
+        {error && <div style={{color:"var(--risk)", fontSize:13, marginTop:10}}>{error}</div>}
+      </div>
+      <ResultCard result={result} />
+    </div>
+  );
+}
+
+function Dashboard(){
+  const [stats, setStats] = useState(null);
+  const [tipIndex, setTipIndex] = useState(0);
+
+  useEffect(()=>{
+    fetch(`${API}/dashboard`).then(r=>r.json()).then(setStats).catch(()=>setStats(null));
+    const t = setInterval(()=> setTipIndex(i => (i+1)%TIPS.length), 4000);
+    return ()=>clearInterval(t);
+  },[]);
+
+  return (
+    <div>
+      <div className="tips-carousel">
+        <div className="tip-text">💡 {TIPS[tipIndex]}</div>
+        <div className="tip-dots">{TIPS.map((_,i)=><div key={i} className={"dot"+(i===tipIndex?" active":"")}/>)}</div>
+      </div>
+      {stats ? (
+        <div className="stat-grid">
+          <div className="stat-box"><div className="num">{stats.total}</div><div className="label">Total Checks</div></div>
+          <div className="stat-box"><div className="num" style={{color:"var(--risk)"}}>{stats.high}</div><div className="label">High Risk</div></div>
+          <div className="stat-box"><div className="num" style={{color:"var(--caution)"}}>{stats.medium}</div><div className="label">Medium Risk</div></div>
+          <div className="stat-box"><div className="num" style={{color:"var(--safe)"}}>{stats.low}</div><div className="label">Low Risk</div></div>
+        </div>
+      ) : <div className="empty-state">No data yet — connect the backend to see your dashboard.</div>}
+      <div className="card">
+        <h3 style={{fontSize:14, marginTop:0}}>Quick Start</h3>
+        <div className="empty-state" style={{padding:"10px 0"}}>Head to the Check tab to run your first offer, link, or course check.</div>
+      </div>
+    </div>
+  );
+}
+
+function History(){
+  const [items, setItems] = useState(null);
+  useEffect(()=>{ fetch(`${API}/history`).then(r=>r.json()).then(setItems).catch(()=>setItems([])); },[]);
+  if(items===null) return <div className="empty-state">Loading…</div>;
+  return (
+    <div className="card">
+      {items.length===0 && <div className="empty-state">No checks yet. Run one from the Check tab.</div>}
+      {items.map(item=>(
+        <div className="history-row" key={item.id}>
+          <div>
+            <div style={{fontWeight:600}}>{item.source==="link"?"🔗":item.source==="course"?"🎓":"💼"} <span className={"pill "+item.level} style={{marginLeft:6}}>{item.level}</span></div>
+            <div className="snippet">{item.input_snippet}</div>
+          </div>
+          <div className="mono" style={{fontWeight:700}}>{item.score}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Compare(){
+  const [leftVal, setLeftVal] = useState("");
+  const [rightVal, setRightVal] = useState("");
+  const [res, setRes] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const run = async () => {
+    setLoading(true);
+    try{
+      const r = await fetch(`${API}/compare`, {method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify({
+        left:{type:"text", value:leftVal, mode:"job"}, right:{type:"text", value:rightVal, mode:"job"}
+      })});
+      setRes(await r.json());
+    }catch(e){ setRes(null); }
+    setLoading(false);
+  };
+
+  return (
+    <div>
+      <div className="card">
+        <div className="compare-grid">
+          <div>
+            <textarea rows={5} placeholder="Paste first offer…" value={leftVal} onChange={e=>setLeftVal(e.target.value)} />
+            <UploadOfferButton onExtracted={setLeftVal} label="Upload offer #1" />
+          </div>
+          <div>
+            <textarea rows={5} placeholder="Paste second offer…" value={rightVal} onChange={e=>setRightVal(e.target.value)} />
+            <UploadOfferButton onExtracted={setRightVal} label="Upload offer #2" />
+          </div>
+        </div>
+        <button className="primary-btn" disabled={loading} onClick={run}>{loading?"Comparing…":"Compare"}</button>
+      </div>
+      {res && (
+        <div className="compare-grid">
+          <ResultCard result={res.left} />
+          <ResultCard result={res.right} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Logo(){
+  return (
+    <svg className="badge-logo" viewBox="0 0 42 42" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="jsGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#B8804A" />
+          <stop offset="100%" stopColor="#4A2C13" />
+        </linearGradient>
+      </defs>
+      <path d="M21 2 L38 8 V20 C38 30 31 37 21 40 C11 37 4 30 4 20 V8 Z" fill="url(#jsGrad)" />
+      <path d="M14 21 L19 26 L29 15" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+const CHAT_FAQ = [
+  { keys: ["score", "how does scoring", "risk score"], a: "The risk score (0–100) is built from weighted red flags — things like upfront payment requests, urgency pressure, unverifiable company domains, and vague job details. Higher score = more warning signs." },
+  { keys: ["payment", "pay", "fee", "deposit"], a: "Big rule of thumb: legitimate employers never ask you to pay (for training, a laptop, registration, etc.) to get hired. Any upfront payment request is a major red flag." },
+  { keys: ["verify", "legit", "real company", "check company"], a: "Search the company name + \"careers\" on their official website, look them up on LinkedIn, and cross-check the recruiter's email domain matches the company's real domain." },
+  { keys: ["link", "url", "website check"], a: "Use the 🔗 Link mode in the Check tab — it looks at domain age, suspicious patterns, and (if API keys are configured) real-time safe-browsing checks." },
+  { keys: ["upload", "file", "docx", "pdf"], a: "You can upload a .txt, .docx, or .pdf offer letter using the 📎 Upload button — it extracts the text automatically so you don't have to retype it." },
+  { keys: ["course", "certification"], a: "Paid \"placement guarantee\" courses are a common scam pattern too — use the 🎓 Paid Course mode to check those offers specifically." },
+  { keys: ["compare"], a: "The Compare tab lets you check two offers side-by-side — handy if you're deciding between two, or comparing a suspicious one against a known-good example." },
+];
+
+function chatReply(input){
+  const lower = input.toLowerCase();
+  for(const item of CHAT_FAQ){
+    if(item.keys.some(k => lower.includes(k))) return item.a;
+  }
+  return "I'm a simple offline helper, so I only know about JobShield's features and general scam red flags — try asking about \"payment\", \"verify a company\", \"upload\", or \"how scoring works\", or head to the Check tab to test a real offer.";
+}
+
+function ChatWidget(){
+  const [open, setOpen] = useState(false);
+  const [messages, setMessages] = useState([
+    { from:"bot", text:"Hi! I'm the JobShield helper. Ask me how scoring works, how to verify a company, or how to upload an offer letter." }
+  ]);
+  const [input, setInput] = useState("");
+  const bodyRef = React.useRef(null);
+
+  useEffect(()=>{ if(bodyRef.current) bodyRef.current.scrollTop = bodyRef.current.scrollHeight; }, [messages, open]);
+
+  const send = (text) => {
+    const t = (text ?? input).trim();
+    if(!t) return;
+    const reply = chatReply(t);
+    setMessages(m => [...m, {from:"user", text:t}, {from:"bot", text:reply}]);
+    setInput("");
+  };
+
+  return (
+    <>
+      <button className="chat-fab" onClick={()=>setOpen(o=>!o)} aria-label="Open help chat">{open ? "✕" : "💬"}</button>
+      {open && (
+        <div className="chat-panel">
+          <div className="chat-head"><span>JobShield Helper</span><button className="chat-close" onClick={()=>setOpen(false)}>✕</button></div>
+          <div className="chat-body" ref={bodyRef}>
+            {messages.map((m,i)=>(<div key={i} className={"chat-bubble "+m.from}>{m.text}</div>))}
+          </div>
+          <div className="chat-suggestions">
+            {["How does scoring work?","How do I upload a file?","How do I verify a company?"].map((s,i)=>(
+              <span key={i} className="chat-chip" onClick={()=>send(s)}>{s}</span>
+            ))}
+          </div>
+          <div className="chat-input-row">
+            <input type="text" placeholder="Ask a question…" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter") send();}} />
+            <button className="chat-send" onClick={()=>send()}>Send</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function App(){
+  const [tab, setTab] = useState("check");
+  const [theme, setTheme] = useState(()=>{
+    try{ return localStorage.getItem("jobshield-theme") || "light"; }catch(e){ return "light"; }
+  });
+
+  useEffect(()=>{
+    document.documentElement.setAttribute("data-theme", theme);
+    try{ localStorage.setItem("jobshield-theme", theme); }catch(e){}
+  }, [theme]);
+
+  return (
+    <div className="shell">
+      <header className="top">
+        <Logo />
+        <div>
+          <h1>JobShield</h1>
+          <p>Check job, internship, and course offers before you trust them.</p>
+        </div>
+        <button className="theme-toggle" onClick={()=>setTheme(t=>t==="light"?"dark":"light")} aria-label="Toggle dark mode">
+          {theme==="light" ? "🌙" : "☀️"}
+        </button>
+      </header>
+      <nav className="tabs">
+        <button className={tab==="check"?"active":""} onClick={()=>setTab("check")}>Check</button>
+        <button className={tab==="dashboard"?"active":""} onClick={()=>setTab("dashboard")}>Dashboard</button>
+        <button className={tab==="history"?"active":""} onClick={()=>setTab("history")}>History</button>
+        <button className={tab==="compare"?"active":""} onClick={()=>setTab("compare")}>Compare</button>
+      </nav>
+      {tab==="check" && <CheckTab/>}
+      {tab==="dashboard" && <Dashboard/>}
+      {tab==="history" && <History/>}
+      {tab==="compare" && <Compare/>}
+      <div className="footer-note">JobShield gives guidance, not certainty. Always verify independently before accepting any offer or payment.</div>
+      <ChatWidget />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
