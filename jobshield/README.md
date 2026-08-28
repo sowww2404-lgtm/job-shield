@@ -60,3 +60,5 @@ python app.py
 
 open frontend/index.html in a web browser.
 🔗 **Live Demo:** https://sowww2404-lgtm.github.io/job-shield/
+
+⚠️ Hosted on a free tier — the backend may take 30-50 seconds to wake up on first use.
